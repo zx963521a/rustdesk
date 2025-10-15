@@ -14,10 +14,9 @@ rustflags = [
 #]
 [net]
 git-fetch-with-cli = true
-# ========== 进程隐藏依赖 ==========
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winbase", "wincon", "processthreadsapi", "winnt"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-# ========== 依赖添加结束 ==========
+
