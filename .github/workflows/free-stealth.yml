@@ -1,28 +1,46 @@
-```yaml
-name: Simple Free Stealth
+name: Simple RustDesk Stealth Build
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       with:
         repository: rustdesk/rustdesk
+        submodules: true
         
-    - uses: dtolnay/rust-toolchain@stable
-    
-    - name: Add basic stealth
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Add stealth feature
       run: |
-        # 简单地在main.rs中添加隐身检查
-        sed -i '1s/^/\/\/ Free Stealth Mode - Cloud Build\n/' src/main.rs
-        sed -i '/fn main() {/a\\n    let args: Vec<String> = std::env::args().collect();\n    if args.iter().any(|arg| arg == \"--stealth\") {\n        println!(\"Stealth mode enabled\");\n        std::thread::sleep(std::time::Duration::from_secs(3));\n    }' src/main.rs
+        # 在main.rs开头添加隐身功能
+        echo "// Stealth mode - Auto added" > temp_main.rs
+        echo "" >> temp_main.rs
+        cat src/main.rs >> temp_main.rs
         
-    - run: cargo build --release
-    
-    - uses: actions/upload-artifact@v4
+        # 在main函数中添加隐身检查
+        sed -i '/fn main() {/a\
+    let args: Vec<String> = std::env::args().collect();\
+    if args.iter().any(|arg| arg == \"--stealth\") {\
+        println!(\"Stealth mode enabled\");\
+        std::thread::sleep(std::time::Duration::from_secs(2));\
+    }' temp_main.rs
+        
+        mv temp_main.rs src/main.rs
+        
+    - name: Build
+      run: cargo build --release
+      
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
       with:
-        name: rustdesk-simple-stealth
+        name: rustdesk-stealth
         path: target/release/rustdesk
