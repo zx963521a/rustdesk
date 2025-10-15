@@ -1,16 +1,13 @@
-name: Simple RustDesk Stealth Build
+name: Build RustDesk with Stealth
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [main]
+on: workflow_dispatch
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
       with:
         repository: rustdesk/rustdesk
@@ -19,22 +16,30 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       
-    - name: Add stealth feature
+    - name: Modify main.rs
       run: |
-        # 在main.rs开头添加隐身功能
-        echo "// Stealth mode - Auto added" > temp_main.rs
-        echo "" >> temp_main.rs
-        cat src/main.rs >> temp_main.rs
+        # 直接修改main.rs文件
+        cp src/main.rs src/main.rs.backup
         
-        # 在main函数中添加隐身检查
-        sed -i '/fn main() {/a\
-    let args: Vec<String> = std::env::args().collect();\
-    if args.iter().any(|arg| arg == \"--stealth\") {\
-        println!(\"Stealth mode enabled\");\
-        std::thread::sleep(std::time::Duration::from_secs(2));\
-    }' temp_main.rs
-        
-        mv temp_main.rs src/main.rs
+        # 使用Python进行精确修改
+        python3 -c "
+import re
+
+with open('src/main.rs', 'r') as f:
+    content = f.read()
+
+# 在main函数中添加stealth检查
+new_content = re.sub(
+    r'(fn main\s*\(\s*\)\s*\{)',
+    r'\1\n    // Stealth mode check\n    let args = std::env::args().collect::<Vec<String>>();\n    if args.contains(&\"--stealth\".to_string()) {\n        println!(\"Stealth mode enabled\");\n    }',
+    content
+)
+
+with open('src/main.rs', 'w') as f:
+    f.write(new_content)
+
+print('Main.rs modified successfully')
+"
         
     - name: Build
       run: cargo build --release
