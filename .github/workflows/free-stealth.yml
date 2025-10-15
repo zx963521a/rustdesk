@@ -1,0 +1,19 @@
+```yaml
+name: Simple Free Stealth
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: rustdesk/rustdesk
+        
+    - uses: dtolnay/rust-toolchain@stable
+    
+    - name: Add basic stealth
+      run: |
+       
