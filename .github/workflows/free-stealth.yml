@@ -1,51 +1,75 @@
-name: Build RustDesk with Stealth
+name: Build Free RustDesk with Stealth
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-stealth:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+    
+    runs-on: ${{ matrix.platform }}
     
     steps:
-    - name: Checkout
+    - name: Checkout RustDesk
       uses: actions/checkout@v4
       with:
         repository: rustdesk/rustdesk
-        submodules: true
+        submodules: recursive
         
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       
+    - name: Create stealth module
+      run: |
+        cat > src/stealth.rs << 'EOF'
+use std::env;
+use std::thread;
+use std::time::Duration;
+
+pub fn init_stealth() {
+    let args: Vec<String> = env::args().collect();
+    if args.iter().any(|arg| arg == "--stealth") {
+        println!("Stealth mode activated");
+        thread::sleep(Duration::from_secs(2));
+    }
+}
+EOF
+
     - name: Modify main.rs
       run: |
-        # 直接修改main.rs文件
+        # 备份文件
         cp src/main.rs src/main.rs.backup
         
-        # 使用Python进行精确修改
-        python3 -c "
-import re
-
-with open('src/main.rs', 'r') as f:
-    content = f.read()
-
-# 在main函数中添加stealth检查
-new_content = re.sub(
-    r'(fn main\s*\(\s*\)\s*\{)',
-    r'\1\n    // Stealth mode check\n    let args = std::env::args().collect::<Vec<String>>();\n    if args.contains(&\"--stealth\".to_string()) {\n        println!(\"Stealth mode enabled\");\n    }',
-    content
-)
-
-with open('src/main.rs', 'w') as f:
-    f.write(new_content)
-
-print('Main.rs modified successfully')
-"
+        # 在文件开头添加导入
+        echo "mod stealth;" > temp_main.rs
+        echo "use stealth::init_stealth;" >> temp_main.rs
+        cat src/main.rs >> temp_main.rs
         
-    - name: Build
+        # 在main函数中添加调用
+        sed -i 's/fn main() {/fn main() {\n    init_stealth();/' temp_main.rs
+        
+        mv temp_main.rs src/main.rs
+        
+    - name: Build RustDesk
       run: cargo build --release
       
-    - name: Upload binary
+    - name: Create launcher script
+      run: |
+        cat > start_stealth.sh << 'EOF'
+#!/bin/bash
+echo "Starting RustDesk in stealth mode..."
+./rustdesk --stealth
+EOF
+        chmod +x start_stealth.sh
+        
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: rustdesk-stealth
-        path: target/release/rustdesk
+        path: |
+          target/release/rustdesk
+          start_stealth.sh
