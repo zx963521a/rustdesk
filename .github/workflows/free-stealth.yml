@@ -16,4 +16,13 @@ jobs:
     
     - name: Add basic stealth
       run: |
-       
+        # 简单地在main.rs中添加隐身检查
+        sed -i '1s/^/\/\/ Free Stealth Mode - Cloud Build\n/' src/main.rs
+        sed -i '/fn main() {/a\\n    let args: Vec<String> = std::env::args().collect();\n    if args.iter().any(|arg| arg == \"--stealth\") {\n        println!(\"Stealth mode enabled\");\n        std::thread::sleep(std::time::Duration::from_secs(3));\n    }' src/main.rs
+        
+    - run: cargo build --release
+    
+    - uses: actions/upload-artifact@v4
+      with:
+        name: rustdesk-simple-stealth
+        path: target/release/rustdesk
